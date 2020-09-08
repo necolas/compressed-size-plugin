@@ -8,6 +8,7 @@ const prettyBytes = require('pretty-bytes');
 const brotliSizePkg = require('brotli-size');
 const fs = require('fs-extra');
 const { noop, toFileMap, toMap, dedupe } = require('./util');
+const { minify } = require('terser');
 
 const glob = promisify(globPromise);
 
@@ -85,11 +86,12 @@ class SizePluginCore {
       cwd,
       ignore: this.options.exclude
     });
-
     const sizes = await Promise.all(
-      this.filterFiles(files).map(file =>
-        this.compressionSize.file(path.join(cwd, file)).catch(() => null)
-      )
+      this.filterFiles(files).map(async (file) => {
+        const input = fs.readFileSync(path.join(cwd, file), 'utf8');
+        const result = await minify(input);
+        return this.compressionSize(result.code);
+      })
     );
     return toMap(
       files.map(filename => this.options.stripHash(filename)),
@@ -108,7 +110,11 @@ class SizePluginCore {
     const fileNames = this.filterFiles(Object.keys(assets));
 
     const sizes = await Promise.all(
-      fileNames.map(name => this.compressionSize(assets[name].source))
+      fileNames.map(async (name) => {
+        const input = assets[name].source;
+        const result = await minify(input);
+        return this.compressionSize(result.code)
+      })
     );
     // map of de-hashed filenames to their final size
     const sizeMap = toMap(
