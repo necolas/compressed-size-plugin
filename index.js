@@ -6,7 +6,6 @@ const gzipSize = require('gzip-size');
 const chalk = require('chalk');
 const prettyBytes = require('pretty-bytes');
 const brotliSizePkg = require('brotli-size');
-const { publishSizes, publishDiff } = require('size-plugin-store');
 const fs = require('fs-extra');
 const { noop, toFileMap, toMap, dedupe } = require('./util');
 
@@ -197,7 +196,6 @@ class SizePluginCore {
       files: files
     };
     this.options.save && (await this.options.save(stats));
-    this.options.publish && (await publishDiff(stats, this.options.filename));
     if (
       this.options.mode === 'production' &&
       stats.files.some(file => file.delta !== 0)
@@ -208,7 +206,6 @@ class SizePluginCore {
         await fs.ensureFile(this.options.filename);
         await fs.writeJSON(this.options.filename, data);
       }
-      this.options.publish && (await publishSizes(data, this.options.filename));
     }
   }
   async execute(assets, outputPath) {
